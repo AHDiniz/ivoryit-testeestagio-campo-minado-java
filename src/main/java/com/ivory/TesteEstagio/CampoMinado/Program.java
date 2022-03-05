@@ -9,19 +9,21 @@ public class Program {
 		System.out.println("Início do jogo\n=======");
 		System.out.println(campoMinado.Tabuleiro());
 		
+		Solver solver = null;
+		
 		while (campoMinado.JogoStatus() == StatusTipo.Aberto) {
 			
 			String[] lines = campoMinado.Tabuleiro().split("\\r?\\n|\\r");
 
-			// Não usando foreach pois a coordenada vai ser importante para verificar casas vizinhas:
-			for (int i = 0; i < lines.length; ++i) {
+			if (solver == null)
+				solver = new Solver(lines, campoMinado);
+			else solver.atualizarCasas(lines);
 
-				String line = lines[i];
+			Coordenada[] pontosParaAbrir = solver.jogarTurno();
 
-				for (int j = 0; j < line.length(); ++j) {
+			for (Coordenada ponto : pontosParaAbrir) {
 
-					char c = line.charAt(j);
-				}
+				campoMinado.Abrir(ponto.X(), ponto.Y());
 			}
 		}
 	}
