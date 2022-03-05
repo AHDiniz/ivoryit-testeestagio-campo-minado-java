@@ -9,7 +9,21 @@ public class Program {
 		System.out.println("Início do jogo\n=======");
 		System.out.println(campoMinado.Tabuleiro());
 		
-		// Realize sua codificação a partir deste ponto, boa sorte!
+		while (campoMinado.JogoStatus() == StatusTipo.Aberto) {
+			
+			String[] lines = campoMinado.Tabuleiro().split("\\r?\\n|\\r");
+
+			// Não usando foreach pois a coordenada vai ser importante para verificar casas vizinhas:
+			for (int i = 0; i < lines.length; ++i) {
+
+				String line = lines[i];
+
+				for (int j = 0; j < line.length(); ++j) {
+
+					char c = line.charAt(j);
+				}
+			}
+		}
 	}
 
 }
