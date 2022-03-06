@@ -14,19 +14,23 @@ public class Program {
 		while (campoMinado.JogoStatus() == StatusTipo.Aberto) {
 			
 			String[] lines = campoMinado.Tabuleiro().split("\\r?\\n|\\r");
+			for (String line : lines)
+				System.out.println(line);
 
 			if (solver == null)
-				solver = new Solver(lines, campoMinado);
+				solver = new Solver(lines);
 			else solver.atualizarCasas(lines);
 
 			Coordenada[] pontosParaAbrir = solver.jogarTurno();
-			System.out.println(pontosParaAbrir.length);
 
 			for (Coordenada ponto : pontosParaAbrir) {
 
-				campoMinado.Abrir(ponto.X() + 1, ponto.Y() + 1);
+				campoMinado.Abrir(ponto.X(), ponto.Y());
 			}
-			
+
+			System.out.println("Status = " + campoMinado.JogoStatus());
+			solver.imprimirProbabilidades();
+			solver.imprimirMarcados();
 			System.out.println(campoMinado.Tabuleiro());
 		}
 	}

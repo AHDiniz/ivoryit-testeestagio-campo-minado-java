@@ -49,10 +49,16 @@ class Casa {
 
         this.aberto = aberto;
         this.vizinhosBomba = vizinhosBomba;
+        if (aberto)
+            this.probabilidade = 0;
     }
 
     public void setProbabilidade(float probabilidade) {
 
+        if (probabilidade >= 1.0f)
+            probabilidade = 1.0f;
+        if (probabilidade <= 0.0f)
+            probabilidade = 0.0f;
         this.probabilidade = probabilidade;
     }
 
@@ -65,101 +71,145 @@ class Casa {
 public class Solver {
 
     private Casa[] casas;
-    private CampoMinado campo;
     private int colunas, linhas;
 
-    public Solver(String[] lines, CampoMinado campo) {
+    public Solver(String[] lines) {
 
-        this.campo = campo;
         casas = new Casa[lines.length * lines[0].length()];
 
         linhas = lines.length;
         colunas = lines[0].length();
 
         for (int i = 0; i < casas.length; ++i) {
+
+            int linha = i / lines.length, coluna = i % lines.length;
             
-            char c = lines[i / lines.length].charAt(i % lines.length);
+            char c = lines[linha].charAt(coluna);
             boolean isDigit = Character.isDigit(c);
             if (isDigit)
-                casas[i] = new Casa(i, true, Character.getNumericValue(c));
-            else casas[i] = new Casa(i, c == '0', 0);
+                casas[i] = new Casa(i + 1, true, Character.getNumericValue(c));
+            else casas[i] = new Casa(i + 1, false, 0);
         }
+
+        Casa[] v = casasVizinhas(casas[0]);
+        System.out.println(v.length);
     }
 
     public void atualizarCasas(String[] lines) {
 
         for (int i = 0; i < casas.length; ++i) {
 
-            if (casas[i].estaMarcado())
+            if (casas[i].estaMarcado()) {
                 continue;
+            }
 
             char c = lines[i / lines.length].charAt(i % lines.length);
             boolean isDigit = Character.isDigit(c);
             if (isDigit)
                 casas[i].atualizar(true, Character.getNumericValue(c));
-            else casas[i].atualizar(c == '0', 0);
+            else casas[i].atualizar(false, 0);
         }
+    }
+
+    public void imprimirProbabilidades() {
+
+        for (int i = 0; i < casas.length; ++i) {
+
+            System.out.print(casas[i].getProbabilidade() + " ");
+
+            if ((i + 1) % linhas == 0) {
+
+                System.out.print("\n");
+            }
+        }
+    }
+
+    public void imprimirMarcados() {
+
+        for (int i = 0; i < casas.length; ++i) {
+
+            System.out.print(casas[i].estaMarcado() ? 1 : 0);
+
+            if ((i + 1) % linhas == 0) {
+
+                System.out.print("\n");
+            }
+        }
+
+        System.out.print("\n");
     }
 
     public Coordenada[] jogarTurno() {
 
         List<Coordenada> pontosParaAbrir = new ArrayList<Coordenada>();
 
-        // Passe para calcular probabilidades de cada casa fechada possuir uma bomba:
+        int casasMarcadas = 0;
+
         for (Casa casa : casas) {
-            
-            if (casa.estaMarcado() || !casa.estaAberto() || casa.getVizinhosBomba() == 0)
-                continue;
-            
-            Casa[] vizinhos = casasVizinhas(casa);
-            Casa[] fechados = vizinhosFechados(casa, vizinhos);
 
-            if (fechados.length <= casa.getVizinhosBomba()) {
+            if (casa.getVizinhosBomba() == 1) {
 
-                for (Casa fechada : fechados) {
+                Casa[] vizinhos = casasVizinhas(casa);
+                Casa[] fechados = vizinhosFechados(casa, vizinhos);
+                Casa[] marcados = vizinhosMarcados(casa, vizinhos);
 
-                    fechada.marcar();
-                }
-            } else {
+                if (fechados.length == 1 && marcados.length == 0)
+                    fechados[0].marcar();
+            }
 
-                for (Casa fechada : fechados) {
+            if (casa.estaAberto() && casa.getVizinhosBomba() > 0) {
 
-                    fechada.setProbabilidade(fechada.getProbabilidade() + casa.getVizinhosBomba() / 8);
+                Casa[] vizinhos = casasVizinhas(casa);
+                Casa[] fechados = vizinhosFechados(casa, vizinhos);
+
+                for (Casa fechado : fechados) {
+
+                    Casa[] vizinhosDoFechado = casasVizinhas(fechado);
+                    Casa[] abertosDoFechado = vizinhosAbertos(fechado, vizinhosDoFechado);
+
+                    float probabilidade = 1.0f;
+
+                    for (Casa a : abertosDoFechado) {
+
+                        Casa[] vizinhosA = casasVizinhas(a);
+                        Casa[] fechadosA = vizinhosFechados(a, vizinhosA);
+                        Casa[] marcadosA = vizinhosMarcados(a, vizinhosA);
+
+                        probabilidade *= (float)(a.getVizinhosBomba() - marcadosA.length) / (float)(fechadosA.length - marcadosA.length);
+                    }
+
+                    fechado.setProbabilidade(probabilidade);
+
+                    if (fechado.getProbabilidade() >= 1.0f) {
+                        fechado.marcar();
+                        ++casasMarcadas;
+                    }
                 }
             }
         }
 
-        // Passe para marcar casas com probabilidade maior ou igual a um:
         for (Casa casa : casas) {
 
-            if (!casa.estaAberto() && !casa.estaMarcado()) {
+            if (casa.estaAberto() && casa.getVizinhosBomba() > 0) {
 
-                if (casa.getProbabilidade() >= 1.0f) {
+                Casa[] vizinhos = casasVizinhas(casa);
+                Casa[] marcados = vizinhosMarcados(casa, vizinhos);
 
-                    casa.marcar();
-                }
-            }
-        }
+                if (marcados.length >= casa.getVizinhosBomba()) {
 
-        // Passe para abrir as casas que podem ser abertas:
-        for (Casa casa : casas) {
+                    Casa[] fechados = vizinhosFechados(casa, vizinhos);
 
-            if (casa.estaMarcado() || !casa.estaAberto() || casa.getVizinhosBomba() == 0)
-                continue;
-            
-            Casa[] vizinhos = casasVizinhas(casa);
-            Casa[] fechados = vizinhosFechados(casa, vizinhos);
-            Casa[] marcados = vizinhosMarcados(casa, vizinhos);
+                    for (Casa fechado : fechados) {
 
-            if (marcados.length >= casa.getVizinhosBomba()) {
+                        if (fechado.getProbabilidade() <= 0.0f) {
 
-                for (Casa fechada : fechados) {
+                            int linha = fechado.getIndice() / linhas;
+                            int coluna = fechado.getIndice() % linhas;
 
-                    int x = fechada.getIndice() % linhas;
-                    int y = fechada.getIndice() / linhas;
-
-                    Coordenada c = new Coordenada(x, y);
-                    pontosParaAbrir.add(c);
+                            Coordenada c = new Coordenada(linha, coluna);
+                            pontosParaAbrir.add(c);
+                        }
+                    }
                 }
             }
         }
@@ -237,28 +287,19 @@ public class Solver {
 
         List<Casa> vizinhos = new ArrayList<Casa>();
 
+        int linha = casa.getIndice() / linhas;
+        int coluna = casa.getIndice() % linhas;
+
         for (Casa c : casas) {
-            
-            // Vizinhos laterais:
-            if (Math.abs(c.getIndice() - casa.getIndice()) == 1) {
-                
-                vizinhos.add(c);
-                continue;
-            }
-            
-            // Vizinhos de baixo:
-            if (c.getIndice() <= casa.getIndice() + (colunas + 1) && c.getIndice() >= casa.getIndice() + (colunas - 1)) {
 
-                vizinhos.add(c);
+            if (c.getIndice() == casa.getIndice())
                 continue;
-            }
 
-            // Vizinhos de cima:
-            if (c.getIndice() <= casa.getIndice() - (colunas + 1) && c.getIndice() >= casa.getIndice() - (colunas - 1)) {
+            int linhaC = c.getIndice() / linhas;
+            int colunaC = c.getIndice() % linhas;
 
+            if (Math.abs(linha - linhaC) <= 1 && Math.abs(coluna - colunaC) <= 1)
                 vizinhos.add(c);
-                continue;
-            }
         }
 
         Casa[] resultado = new Casa[vizinhos.size()];
