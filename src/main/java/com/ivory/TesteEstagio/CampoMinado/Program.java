@@ -20,11 +20,14 @@ public class Program {
 			else solver.atualizarCasas(lines);
 
 			Coordenada[] pontosParaAbrir = solver.jogarTurno();
+			System.out.println(pontosParaAbrir.length);
 
 			for (Coordenada ponto : pontosParaAbrir) {
 
-				campoMinado.Abrir(ponto.X(), ponto.Y());
+				campoMinado.Abrir(ponto.X() + 1, ponto.Y() + 1);
 			}
+			
+			System.out.println(campoMinado.Tabuleiro());
 		}
 	}
 
