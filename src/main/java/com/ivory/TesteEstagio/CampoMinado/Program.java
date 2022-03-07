@@ -29,8 +29,6 @@ public class Program {
 			}
 
 			System.out.println("Status = " + campoMinado.JogoStatus());
-			solver.imprimirProbabilidades();
-			solver.imprimirMarcados();
 			System.out.println(campoMinado.Tabuleiro());
 		}
 	}

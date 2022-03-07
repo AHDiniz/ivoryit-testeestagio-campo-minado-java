@@ -2,6 +2,8 @@ package com.ivory.TesteEstagio.CampoMinado;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 
 class Casa {
 
@@ -71,14 +73,15 @@ class Casa {
 public class Solver {
 
     private Casa[] casas;
-    private int colunas, linhas;
+    private int linhas;
+    private int totalMarcadas;
 
     public Solver(String[] lines) {
 
         casas = new Casa[lines.length * lines[0].length()];
 
         linhas = lines.length;
-        colunas = lines[0].length();
+        totalMarcadas = 0;
 
         for (int i = 0; i < casas.length; ++i) {
 
@@ -87,8 +90,8 @@ public class Solver {
             char c = lines[linha].charAt(coluna);
             boolean isDigit = Character.isDigit(c);
             if (isDigit)
-                casas[i] = new Casa(i + 1, true, Character.getNumericValue(c));
-            else casas[i] = new Casa(i + 1, false, 0);
+                casas[i] = new Casa(i, true, Character.getNumericValue(c));
+            else casas[i] = new Casa(i, false, 0);
         }
 
         Casa[] v = casasVizinhas(casas[0]);
@@ -143,9 +146,36 @@ public class Solver {
 
         List<Coordenada> pontosParaAbrir = new ArrayList<Coordenada>();
 
+        if (totalMarcadas >= 10) {
+
+            for (Casa casa : casas) {
+
+                if (!casa.estaAberto() && !casa.estaMarcado()) {
+
+                    int linha = casa.getIndice() / linhas;
+                    int coluna = casa.getIndice() % linhas;
+
+                    Coordenada c = new Coordenada(linha, coluna);
+                    pontosParaAbrir.add(c);
+                }
+            }
+
+            Coordenada[] resultado = new Coordenada[pontosParaAbrir.size()];
+
+            for (int i = 0; i < pontosParaAbrir.size(); ++i)
+                resultado[i] = pontosParaAbrir.get(i);
+
+            return resultado;
+        }
+
+
+        List<Casa> casasOrdenadas = new ArrayList<Casa>(Arrays.asList(casas));
+
+        casasOrdenadas.sort(Comparator.comparing(Casa::getVizinhosBomba));
+
         int casasMarcadas = 0;
 
-        for (Casa casa : casas) {
+        for (Casa casa : casasOrdenadas) {
 
             if (casa.getVizinhosBomba() == 1) {
 
@@ -155,6 +185,29 @@ public class Solver {
 
                 if (fechados.length == 1 && marcados.length == 0)
                     fechados[0].marcar();
+            }
+
+            if (casa.estaAberto() && casa.getVizinhosBomba() > 0) {
+
+                Casa[] vizinhos = casasVizinhas(casa);
+                Casa[] marcados = vizinhosMarcados(casa, vizinhos);
+
+                if (marcados.length >= casa.getVizinhosBomba()) {
+
+                    Casa[] fechados = vizinhosFechados(casa, vizinhos);
+
+                    for (Casa fechado : fechados) {
+
+                        if (fechado.getProbabilidade() <= 0.0f) {
+
+                            int linha = fechado.getIndice() / linhas;
+                            int coluna = fechado.getIndice() % linhas;
+
+                            Coordenada c = new Coordenada(linha, coluna);
+                            pontosParaAbrir.add(c);
+                        }
+                    }
+                }
             }
 
             if (casa.estaAberto() && casa.getVizinhosBomba() > 0) {
@@ -180,38 +233,28 @@ public class Solver {
 
                     fechado.setProbabilidade(probabilidade);
 
-                    if (fechado.getProbabilidade() >= 1.0f) {
+                    if (fechado.getProbabilidade() >= 1.0f && totalMarcadas < 10) {
                         fechado.marcar();
+                        ++totalMarcadas;
                         ++casasMarcadas;
                     }
                 }
             }
         }
 
-        for (Casa casa : casas) {
+        if (casasMarcadas == 0) {
 
-            if (casa.estaAberto() && casa.getVizinhosBomba() > 0) {
+            Casa maiorProb = casas[0];
+            for (Casa casa : casas) {
 
-                Casa[] vizinhos = casasVizinhas(casa);
-                Casa[] marcados = vizinhosMarcados(casa, vizinhos);
+                if (!casa.estaAberto() && !casa.estaMarcado()) {
 
-                if (marcados.length >= casa.getVizinhosBomba()) {
-
-                    Casa[] fechados = vizinhosFechados(casa, vizinhos);
-
-                    for (Casa fechado : fechados) {
-
-                        if (fechado.getProbabilidade() <= 0.0f) {
-
-                            int linha = fechado.getIndice() / linhas;
-                            int coluna = fechado.getIndice() % linhas;
-
-                            Coordenada c = new Coordenada(linha, coluna);
-                            pontosParaAbrir.add(c);
-                        }
-                    }
+                    if (casa.getProbabilidade() >= maiorProb.getProbabilidade())
+                        maiorProb = casa;
                 }
             }
+            if (!maiorProb.estaAberto() && totalMarcadas < 10)
+                maiorProb.marcar();
         }
 
         Coordenada[] resultado = new Coordenada[pontosParaAbrir.size()];
